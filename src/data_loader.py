@@ -174,13 +174,6 @@ class DataLoader:
                         'language': language,
                         'word': word
                     })
-                
-                video_data.append({
-                    'path': str(video_path),
-                    'label': label,
-                    'language': language,
-                    'word': word
-                })
         
         # Create label mappings
         sorted_labels = sorted(label_set)

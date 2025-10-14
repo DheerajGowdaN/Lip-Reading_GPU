@@ -301,14 +301,28 @@ class TrainingGUIWithRecording:
         )
         duration_spin.grid(row=2, column=1, padx=5, pady=5, sticky=tk.W)
         
+        # Camera index selector
+        ttk.Label(config_frame, text="Camera Index:").grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
+        self.camera_index = tk.IntVar(value=0)
+        camera_frame_selector = ttk.Frame(config_frame)
+        camera_frame_selector.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
+        
+        for i in range(3):
+            ttk.Radiobutton(
+                camera_frame_selector,
+                text=str(i),
+                variable=self.camera_index,
+                value=i
+            ).pack(side=tk.LEFT, padx=2)
+        
         # Lip tracking toggle
-        ttk.Label(config_frame, text="Show Lip Tracking:").grid(row=3, column=0, padx=5, pady=5, sticky=tk.W)
+        ttk.Label(config_frame, text="Show Lip Tracking:").grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
         lip_tracking_check = ttk.Checkbutton(
             config_frame,
             variable=self.show_lip_tracking,
             text="Enable"
         )
-        lip_tracking_check.grid(row=3, column=1, padx=5, pady=5, sticky=tk.W)
+        lip_tracking_check.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
         
         # Recording buttons
         btn_frame = ttk.Frame(frame)
@@ -378,15 +392,61 @@ class TrainingGUIWithRecording:
         ).grid(row=5, column=0, pady=5, sticky=(tk.W, tk.E))
     
     def start_camera(self):
-        """Start camera feed"""
+        """Start camera feed with fallback to different indices"""
         try:
-            self.cap = cv2.VideoCapture(0)
-            if not self.cap.isOpened():
-                messagebox.showerror("Error", "Cannot open webcam")
-                return
+            # Try selected camera index first
+            camera_idx = self.camera_index.get()
+            self.cap = cv2.VideoCapture(camera_idx)
             
+            # If selected index fails, try others
+            if not self.cap.isOpened():
+                self.rec_status_var.set(f"Camera {camera_idx} failed, trying alternatives...")
+                self.root.update()
+                
+                for idx in [0, 1, 2]:
+                    if idx == camera_idx:
+                        continue
+                    
+                    if self.cap is not None:
+                        self.cap.release()
+                    
+                    self.cap = cv2.VideoCapture(idx)
+                    if self.cap.isOpened():
+                        self.camera_index.set(idx)
+                        self.rec_status_var.set(f"Camera found at index {idx}")
+                        self.root.update()
+                        time.sleep(0.5)
+                        break
+                else:
+                    messagebox.showerror(
+                        "Error", 
+                        "Cannot open webcam!\n\n"
+                        "Tried camera indices: 0, 1, 2\n\n"
+                        "Solutions:\n"
+                        "• Check if camera is connected\n"
+                        "• Close other apps using camera\n"
+                        "• For phone camera: Ensure DroidCam/IP Webcam is running\n"
+                        "• Try different camera index (0, 1, or 2)"
+                    )
+                    return
+            
+            # Set camera properties
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            self.cap.set(cv2.CAP_PROP_FPS, 30)
+            
+            # Test read
+            ret, frame = self.cap.read()
+            if not ret:
+                messagebox.showerror(
+                    "Error", 
+                    f"Camera {self.camera_index.get()} opened but cannot read frames!\n\n"
+                    "Try:\n"
+                    "• Restart camera application\n"
+                    "• Try different camera index"
+                )
+                self.cap.release()
+                return
             
             self.is_showing_camera = True
             self.start_camera_btn.config(state="disabled")
@@ -397,7 +457,7 @@ class TrainingGUIWithRecording:
             self.camera_thread = threading.Thread(target=self.update_camera_feed, daemon=True)
             self.camera_thread.start()
             
-            self.rec_status_var.set("Camera started - Ready to record")
+            self.rec_status_var.set(f"Camera {self.camera_index.get()} started - Ready to record")
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to start camera: {str(e)}")
