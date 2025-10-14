@@ -1,0 +1,404 @@
+# Multi-Lingual Lip Reading System - .gitignore
+# Created: October 14, 2025
+
+# ============================================================================
+# Python
+# ============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# ============================================================================
+# Machine Learning / Deep Learning
+# ============================================================================
+
+# Trained Models (IMPORTANT - Don't upload large model files!)
+*.h5
+*.hdf5
+*.pb
+*.pth
+*.pt
+*.ckpt
+*.keras
+models/*.h5
+models/*.hdf5
+models/*.pb
+models/best_model.h5
+models/checkpoint/
+
+# Keep class_mapping.json (small config file)
+!models/class_mapping.json
+
+# TensorFlow
+*.tfevents.*
+checkpoint
+model.ckpt.*
+*.ckpt.*
+saved_model/
+
+# PyTorch
+*.pth
+*.pt
+
+# ONNX
+*.onnx
+
+# TensorBoard logs (can be large)
+logs/tensorboard/**
+logs/training/**
+*.tfevents.*
+
+# Keep log directories but ignore contents
+!logs/tensorboard/.gitkeep
+!logs/training/.gitkeep
+
+# Weights & Biases
+wandb/
+
+# MLflow
+mlruns/
+
+# ============================================================================
+# Data Files (IMPORTANT - Videos can be very large!)
+# ============================================================================
+
+# Training videos (DO NOT UPLOAD - too large!)
+data/videos/**/*.mp4
+data/videos/**/*.avi
+data/videos/**/*.mov
+data/videos/**/*.mkv
+data/videos/**/*.webm
+data/videos/**/*.flv
+
+# Keep directory structure
+!data/videos/**/
+!data/videos/**/.gitkeep
+
+# Preprocessed data (can be regenerated)
+data/preprocessed/**
+!data/preprocessed/.gitkeep
+!data/preprocessed/**/
+!data/preprocessed/**/.gitkeep
+
+# Output files
+outputs/predictions/**
+outputs/recordings/**
+!outputs/predictions/.gitkeep
+!outputs/recordings/.gitkeep
+
+# Temporary video files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+*.flv
+
+# ============================================================================
+# IDE / Editor
+# ============================================================================
+
+# Visual Studio Code
+.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+*~
+tags
+.tags
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ============================================================================
+# Operating System
+# ============================================================================
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============================================================================
+# Project Specific
+# ============================================================================
+
+# Conda environment exports (optional - uncomment if you don't want to track)
+# environment.yml
+
+# Old/backup files
+*.bak
+*.backup
+*.old
+*.orig
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Large dataset files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Database files (if any)
+*.db
+*.sqlite
+*.sqlite3
+
+# Configuration overrides (keep main config)
+configs/local_config.yaml
+configs/override.yaml
+
+# Keep main config
+!configs/config.yaml
+
+# Test outputs
+test_output/
+debug/
+
+# Documentation builds (if using Sphinx/similar)
+docs/build/
+docs/_build/
+
+# Coverage reports
+htmlcov/
+.coverage
+
+# Profiling data
+*.prof
+*.lprof
+
+# ============================================================================
+# Custom Project Files
+# ============================================================================
+
+# Keep directory structure with .gitkeep files
+!**/.gitkeep
+
+# Example data (optional - uncomment to ignore)
+# data/examples/
+
+# Experiment results
+experiments/
+results/
+
+# Screenshots (optional - comment out if you want to include)
+# screenshots/
+# *.png
+# *.jpg
+# *.jpeg
+
+# Notes (optional - comment out if you want to include)
+# notes/
+# TODO.md
+# NOTES.md
+
+# ============================================================================
+# Security
+# ============================================================================
+
+# API keys and secrets (IMPORTANT!)
+.env.local
+.env.*.local
+secrets.yaml
+credentials.json
+*.key
+*.pem
+*.cer
+*.crt
+
+# ============================================================================
+# End of .gitignore
+# ============================================================================

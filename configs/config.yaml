@@ -1,0 +1,46 @@
+# Model configuration
+model:
+  sequence_length: 75           # Number of frames in input sequence (3 seconds at 25 FPS)
+  frame_height: 100             # Height of lip region frames
+  frame_width: 100              # Width of lip region frames
+  channels: 3                   # RGB channels
+  lstm_units: [256, 128]        # Units for LSTM layers
+  dense_units: [512, 256]       # Units for dense layers
+  dropout_rate: 0.5             # Dropout rate for regularization
+
+# Training configuration
+training:
+  batch_size: 8                 # Batch size (adjust based on GPU memory)
+  epochs: 100                   # Maximum epochs
+  learning_rate: 0.001          # Initial learning rate
+  early_stopping_patience: 15   # Patience for early stopping
+  reduce_lr_patience: 5         # Patience for reducing learning rate
+  reduce_lr_factor: 0.5         # Factor to reduce learning rate
+  validation_split: 0.2         # Fraction of data for validation
+
+# Preprocessing configuration
+preprocessing:
+  target_fps: 25                # Target frames per second
+  mouth_roi_padding: 0.2        # Padding around mouth region (20%)
+  normalize: true               # Normalize pixel values
+  augmentation:
+    enabled: true               # Enable data augmentation
+    brightness_range: [0.8, 1.2]  # Brightness adjustment range
+    contrast_range: [0.8, 1.2]    # Contrast adjustment range
+    rotation_range: 5           # Rotation range in degrees
+    noise_std: 0.01             # Standard deviation of Gaussian noise
+
+# Supported languages
+languages:
+  - kannada
+  - hindi
+  - english
+
+# Paths configuration
+paths:
+  data_dir: ./data
+  video_dir: ./data/videos
+  preprocessed_dir: ./data/preprocessed
+  models_dir: ./models
+  logs_dir: ./logs
+  shape_predictor: ./models/shape_predictor_68_face_landmarks.dat
