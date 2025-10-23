@@ -96,12 +96,6 @@ class PredictionGUI:
         self.class_mapping = None
         self.idx_to_label = {}
         
-        # Multi-model system for automatic language detection
-        self.models = {}  # Dictionary: {'hindi': model, 'kannada': model}
-        self.model_mappings = {}  # Dictionary: {'hindi': idx_to_label, 'kannada': idx_to_label}
-        self.detected_language = "Unknown"  # Currently detected language
-        self.auto_detect_enabled = False  # Whether auto-detection is active
-        
         # Video capture
         self.cap = None
         self.is_capturing = False
@@ -119,13 +113,13 @@ class PredictionGUI:
         self.stable_top_predictions = []  # Only updated when prediction stabilizes
         
         # Prediction stabilization
-        self.prediction_history = deque(maxlen=15)  # Last 15 predictions for maximum stability
+        self.prediction_history = deque(maxlen=5)  # Last 5 predictions
         self.stable_prediction = "No prediction"
         self.stable_prediction_display = "No prediction"
         self.stable_confidence = 0.0
-        self.prediction_change_threshold = 0.80  # Very high threshold (80%) to change prediction
+        self.prediction_change_threshold = 0.65  # Minimum confidence to change prediction
         self.stability_count = 0  # Consecutive same predictions
-        self.stability_required = 10  # Need 10 consecutive confirmations (~2-3 seconds) predictions to change
+        self.stability_required = 2  # Need 2 consecutive predictions to change
         
         # Lip tracking improvements
         self.previous_lip_landmarks = None
@@ -205,29 +199,16 @@ class PredictionGUI:
         model_frame = ttk.LabelFrame(frame, text="Model Configuration", padding="10")
         model_frame.grid(row=0, column=0, pady=5, sticky=(tk.W, tk.E))
         
-        # Auto-detection checkbox
-        self.auto_detect_var = tk.BooleanVar(value=False)
-        auto_check = ttk.Checkbutton(model_frame, text="🌐 Enable Automatic Language Detection",
-                                     variable=self.auto_detect_var,
-                                     command=self.toggle_auto_detection)
-        auto_check.grid(row=0, column=0, columnspan=3, pady=5, sticky=tk.W)
-        
-        # Single model loading (default)
-        ttk.Label(model_frame, text="Model:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
-        self.model_path_var = tk.StringVar(value="./models/best_model_hindi.h5")
+        ttk.Label(model_frame, text="Model:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        self.model_path_var = tk.StringVar(value="./models/best_model.h5")
         model_entry = ttk.Entry(model_frame, textvariable=self.model_path_var, width=25)
-        model_entry.grid(row=1, column=1, padx=5, pady=5)
+        model_entry.grid(row=0, column=1, padx=5, pady=5)
         
         browse_btn = ttk.Button(model_frame, text="Browse", command=self.browse_model)
-        browse_btn.grid(row=1, column=2, padx=5, pady=5)
+        browse_btn.grid(row=0, column=2, padx=5, pady=5)
         
         load_btn = ttk.Button(model_frame, text="Load Model", command=self.load_model)
-        load_btn.grid(row=2, column=0, columnspan=3, pady=10)
-        
-        # Load all models button (for auto-detection)
-        self.load_all_btn = ttk.Button(model_frame, text="🔄 Load All Language Models", 
-                                       command=self.load_all_models, state=tk.DISABLED)
-        self.load_all_btn.grid(row=3, column=0, columnspan=3, pady=5)
+        load_btn.grid(row=1, column=0, columnspan=3, pady=10)
         
         self.model_info_var = tk.StringVar(value="No model loaded")
         info_label = ttk.Label(model_frame, textvariable=self.model_info_var, 
@@ -287,13 +268,6 @@ class PredictionGUI:
                                          font=("Arial", 12))
         self.confidence_label.pack(pady=5)
         
-        # Detected language (for auto-detection mode)
-        self.language_label = ttk.Label(results_frame,
-                                       text="",
-                                       font=("Arial", 10, "italic"),
-                                       foreground="blue")
-        self.language_label.pack(pady=2)
-        
         # Top 3 predictions
         ttk.Label(results_frame, text="Top 3 Predictions:", 
                  font=("Arial", 10, "bold")).pack(pady=10)
@@ -335,110 +309,6 @@ class PredictionGUI:
         
         print("✓ Prediction system initialized\n")
     
-    def toggle_auto_detection(self):
-        """Toggle automatic language detection"""
-        if self.auto_detect_var.get():
-            self.auto_detect_enabled = True
-            self.load_all_btn.config(state=tk.NORMAL)
-            print("\n✓ Auto-detection mode enabled")
-            print("  Load all language models using the button below\n")
-        else:
-            self.auto_detect_enabled = False
-            self.load_all_btn.config(state=tk.DISABLED)
-            self.detected_language = "Unknown"
-            print("\n✓ Auto-detection mode disabled")
-            print("  Use single model mode\n")
-    
-    def load_all_models(self):
-        """Load all available language models for auto-detection"""
-        try:
-            models_dir = Path('./models')
-            if not models_dir.exists():
-                messagebox.showerror("Error", "Models directory not found!")
-                return
-            
-            # Find all language-specific model files
-            model_files = list(models_dir.glob('best_model_*.h5'))
-            
-            if not model_files:
-                messagebox.showwarning("Warning", 
-                                     "No language-specific models found!\n\n"
-                                     "Looking for: best_model_hindi.h5, best_model_kannada.h5, etc.\n"
-                                     "Train separate models first.")
-                return
-            
-            self.models = {}
-            self.model_mappings = {}
-            loaded_languages = []
-            
-            for model_file in model_files:
-                # Extract language from filename (e.g., best_model_hindi.h5 -> hindi)
-                lang = model_file.stem.replace('best_model_', '')
-                
-                if lang == 'multi':
-                    continue  # Skip multi-language models for auto-detection
-                
-                try:
-                    # Load class mapping
-                    mapping_file = models_dir / f'class_mapping_{lang}.json'
-                    if not mapping_file.exists():
-                        print(f"⚠ Skipping {lang}: class_mapping_{lang}.json not found")
-                        continue
-                    
-                    import json
-                    with open(mapping_file, 'r', encoding='utf-8') as f:
-                        mapping = json.load(f)
-                    
-                    idx_to_label = {int(k): v for k, v in mapping['idx_to_label'].items()}
-                    num_classes = len(idx_to_label)
-                    
-                    # Initialize model
-                    model = LipReadingModel(
-                        num_classes=num_classes,
-                        sequence_length=self.config['model']['sequence_length'],
-                        frame_height=self.config['model']['frame_height'],
-                        frame_width=self.config['model']['frame_width']
-                    )
-                    
-                    model.load_model(str(model_file))
-                    
-                    # Store model and mapping
-                    self.models[lang] = model
-                    self.model_mappings[lang] = idx_to_label
-                    loaded_languages.append(f"{lang.upper()} ({num_classes} classes)")
-                    
-                    print(f"✓ Loaded {lang.upper()} model: {num_classes} classes")
-                
-                except Exception as e:
-                    print(f"✗ Error loading {lang} model: {e}")
-            
-            if not self.models:
-                messagebox.showerror("Error", "No models could be loaded!")
-                return
-            
-            # Update GUI
-            info_text = f"✓ Auto-Detection Active\n" \
-                       f"Loaded: {', '.join(loaded_languages)}\n" \
-                       f"Models: {len(self.models)}"
-            self.model_info_var.set(info_text)
-            
-            # Clear single model reference
-            self.model = None
-            self.idx_to_label = {}
-            
-            messagebox.showinfo("Success", 
-                              f"Loaded {len(self.models)} language models:\n" + 
-                              "\n".join(loaded_languages) +
-                              "\n\nSystem will automatically detect language!")
-            
-            print(f"\n✓ Auto-detection ready with {len(self.models)} languages\n")
-        
-        except Exception as e:
-            print(f"✗ Error loading models: {e}")
-            import traceback
-            traceback.print_exc()
-            messagebox.showerror("Error", f"Failed to load models:\n{str(e)}")
-    
     def browse_model(self):
         """Browse for model file"""
         filepath = filedialog.askopenfilename(
@@ -460,25 +330,11 @@ class PredictionGUI:
         try:
             print(f"Loading model from {model_path}...")
             
-            # Load class mapping - try to find matching language-specific file first
-            model_name = model_path.stem  # e.g., "best_model_hindi" or "best_model"
-            
-            # Try language-specific mapping first (e.g., class_mapping_hindi.json)
-            if '_' in model_name:
-                lang_suffix = model_name.split('_', 2)[-1]  # Extract language part
-                mapping_path = model_path.parent / f'class_mapping_{lang_suffix}.json'
-            else:
-                mapping_path = None
-            
-            # Fall back to generic class_mapping.json if language-specific not found
-            if mapping_path is None or not mapping_path.exists():
-                mapping_path = model_path.parent / 'class_mapping.json'
-            
+            # Load class mapping
+            mapping_path = model_path.parent / 'class_mapping.json'
             if not mapping_path.exists():
-                messagebox.showerror("Error", 
-                                   f"Class mapping not found!\n"
-                                   f"Looking for: {mapping_path.name}\n"
-                                   f"Please ensure it's in the models directory.")
+                messagebox.showerror("Error", "class_mapping.json not found!\n"
+                                            "Please ensure it's in the models directory.")
                 return
             
             import json
@@ -487,13 +343,6 @@ class PredictionGUI:
             
             self.idx_to_label = {int(k): v for k, v in mapping['idx_to_label'].items()}
             num_classes = len(self.idx_to_label)
-            
-            # Get language info if available
-            languages = mapping.get('languages', ['unknown'])
-            lang_info = ', '.join(languages).upper() if languages else 'Unknown'
-            
-            print(f"✓ Loaded class mapping: {mapping_path.name}")
-            print(f"  Languages: {lang_info}")
             
             # Initialize and load model
             self.model = LipReadingModel(
@@ -507,7 +356,7 @@ class PredictionGUI:
             
             # Update info
             info = self.model.get_model_info()
-            info_text = f"✓ Model loaded\nLanguages: {lang_info}\nClasses: {num_classes}\n" \
+            info_text = f"✓ Model loaded\nClasses: {num_classes}\n" \
                        f"Parameters: {info['total_parameters']:,}\n" \
                        f"Size: {info['model_size_mb']:.2f} MB"
             self.model_info_var.set(info_text)
@@ -516,7 +365,7 @@ class PredictionGUI:
             print(f"  Classes: {num_classes}")
             print(f"  Parameters: {info['total_parameters']:,}\n")
             
-            messagebox.showinfo("Success", f"Model loaded successfully!\nLanguages: {lang_info}")
+            messagebox.showinfo("Success", "Model loaded successfully!")
         
         except Exception as e:
             print(f"✗ Error loading model: {e}")
@@ -524,16 +373,9 @@ class PredictionGUI:
     
     def start_camera(self):
         """Start camera capture"""
-        # Check if models are loaded (single or multiple)
-        if self.auto_detect_enabled:
-            if not self.models:
-                messagebox.showwarning("Warning", "Please load language models first!\n"
-                                     "Click 'Load All Language Models' button.")
-                return
-        else:
-            if self.model is None:
-                messagebox.showwarning("Warning", "Please load a model first!")
-                return
+        if self.model is None:
+            messagebox.showwarning("Warning", "Please load a model first!")
+            return
         
         if self.is_capturing:
             messagebox.showwarning("Warning", "Camera already running!")
@@ -766,174 +608,39 @@ class PredictionGUI:
     
     def predict_sequence(self):
         """Make prediction on current sequence with enhanced preprocessing"""
-        # Check if we have buffer ready
-        if len(self.lip_buffer) < 75:
+        if self.model is None or len(self.lip_buffer) < 75:
             return
         
-        # Route to appropriate prediction method
-        if self.auto_detect_enabled and self.models:
-            self._predict_with_auto_detection()
-        elif self.model is not None:
-            self._predict_with_single_model()
-    
-    def _predict_with_auto_detection(self):
-        """Run all models and pick the best prediction"""
         try:
-            # Prepare sequence once (will be reused for all models)
+            # Prepare sequence (geometric features)
             sequence = np.array(list(self.lip_buffer))
+            print(f"[DEBUG] Raw sequence shape: {sequence.shape}")
             
-            # Apply preprocessing (smoothing, outlier removal)
+            # Apply Savitzky-Golay filter for noise reduction while preserving edges
+            # This smooths the feature trajectory over time
             try:
+                # Apply smoothing to each feature dimension
                 window_length = min(11, len(sequence) if len(sequence) % 2 == 1 else len(sequence) - 1)
                 if window_length >= 5:
                     sequence = savgol_filter(sequence, window_length=window_length, 
                                             polyorder=3, axis=0)
+                    print(f"[DEBUG] Applied Savitzky-Golay smoothing (window={window_length})")
             except Exception as e:
-                pass
+                print(f"[DEBUG] Smoothing skipped: {e}")
             
-            # Remove outliers
+            # Remove outlier frames (z-score method)
+            # Calculate z-scores for feature magnitudes
             feature_magnitudes = np.linalg.norm(sequence, axis=1)
             z_scores = np.abs((feature_magnitudes - np.mean(feature_magnitudes)) / 
                             (np.std(feature_magnitudes) + 1e-8))
-            outlier_mask = z_scores > 3.0
+            
+            # Replace outliers with interpolated values
+            outlier_threshold = 3.0
+            outlier_mask = z_scores > outlier_threshold
             if np.any(outlier_mask):
+                print(f"[DEBUG] Detected {np.sum(outlier_mask)} outlier frames, interpolating...")
                 for i in np.where(outlier_mask)[0]:
-                    if i > 0 and i < len(sequence) - 1:
-                        sequence[i] = (sequence[i-1] + sequence[i+1]) / 2
-            
-            # Add temporal features and normalize
-            sequence = self.preprocessor._add_temporal_features(sequence)
-            sequence = self.preprocessor._normalize_features(sequence)
-            sequence = np.expand_dims(sequence, axis=0)
-            
-            # Run ALL models and collect results
-            all_predictions = []
-            
-            print(f"\n[AUTO-DETECT] Running {len(self.models)} models...")
-            
-            for lang, model in self.models.items():
-                try:
-                    predictions = model.predict(sequence)
-                    if not isinstance(predictions, np.ndarray):
-                        predictions = np.array(predictions)
-                    
-                    # Get best prediction from this model
-                    top_idx = np.argmax(predictions)
-                    confidence = float(predictions[top_idx])
-                    word_label = self.model_mappings[lang][top_idx]
-                    
-                    # Extract word (remove language prefix if present)
-                    if '_' in word_label:
-                        word = word_label.split('_', 1)[1]
-                    else:
-                        word = word_label
-                    
-                    all_predictions.append({
-                        'language': lang,
-                        'word': word,
-                        'word_label': word_label,
-                        'confidence': confidence,
-                        'all_probs': predictions
-                    })
-                    
-                    print(f"  {lang.upper():8s}: {word} ({confidence:.1%})")
-                
-                except Exception as e:
-                    print(f"  {lang.upper():8s}: Error - {e}")
-            
-            if not all_predictions:
-                return
-            
-            # Pick the prediction with HIGHEST confidence across ALL models
-            best = max(all_predictions, key=lambda x: x['confidence'])
-            
-            self.detected_language = best['language']
-            self.prediction_confidence = best['confidence']
-            
-            # Format for display
-            current_pred = f"{best['word']} [{best['language'].upper()}]"
-            
-            print(f"[AUTO-DETECT] ✓ WINNER: {current_pred} at {self.prediction_confidence:.1%}\n")
-            
-            # Update top predictions from best model
-            top_indices = np.argsort(best['all_probs'])[-3:][::-1]
-            self.top_predictions = [
-                (self.model_mappings[best['language']][idx], 
-                 float(best['all_probs'][idx]))
-                for idx in top_indices
-            ]
-            
-            # Add to prediction history
-            if self.prediction_confidence >= self.confidence_threshold_var.get():
-                self.prediction_history.append({
-                    'prediction': current_pred,
-                    'word': best['word'],
-                    'confidence': self.prediction_confidence
-                })
-            else:
-                self.prediction_history.append({
-                    'prediction': 'Low confidence',
-                    'word': None,
-                    'confidence': self.prediction_confidence
-                })
-            
-            # Simple stabilization for auto-detection
-            if len(self.prediction_history) >= 5:
-                recent = list(self.prediction_history)[-5:]
-                pred_counts = {}
-                for p in recent:
-                    pred = p['prediction']
-                    pred_counts[pred] = pred_counts.get(pred, 0) + 1
-                
-                most_common = max(pred_counts.items(), key=lambda x: x[1])
-                if most_common[1] >= 3:  # At least 3 out of 5
-                    self.stable_prediction = most_common[0]
-                    self.stable_confidence = self.prediction_confidence
-                    self.stable_top_predictions = self.top_predictions.copy()
-                    
-                    # Romanize for display
-                    if '[' in most_common[0]:
-                        word_part = most_common[0].split('[')[0].strip()
-                        lang_part = most_common[0].split('[')[1].strip(']')
-                        word_rom = {
-                            'ನಮಸ್ಕಾರ': 'Namaskara',
-                            'ರಾಮ': 'Rama',
-                            'तुम्हारा': 'Tumhara',
-                            'पिता': 'Pitha',
-                            'hello': 'Hello',
-                        }.get(word_part, word_part)
-                        self.stable_prediction_display = f"{word_rom} [{lang_part}]"
-                    else:
-                        self.stable_prediction_display = most_common[0]
-            
-            self.current_prediction = self.stable_prediction
-            self.current_prediction_display = self.stable_prediction_display
-        
-        except Exception as e:
-            print(f"[ERROR] Auto-detection failed: {e}")
-            import traceback
-            traceback.print_exc()
-    
-    def _predict_with_single_model(self):
-        """Original single model prediction"""
-        try:
-            sequence = np.array(list(self.lip_buffer))
-            
-            # Preprocessing
-            try:
-                window_length = min(11, len(sequence) if len(sequence) % 2 == 1 else len(sequence) - 1)
-                if window_length >= 5:
-                    sequence = savgol_filter(sequence, window_length=window_length, polyorder=3, axis=0)
-            except Exception as e:
-                pass
-            
-            # Remove outliers
-            feature_magnitudes = np.linalg.norm(sequence, axis=1)
-            z_scores = np.abs((feature_magnitudes - np.mean(feature_magnitudes)) / 
-                            (np.std(feature_magnitudes) + 1e-8))
-            outlier_mask = z_scores > 3.0
-            if np.any(outlier_mask):
-                for i in np.where(outlier_mask)[0]:
+                    # Interpolate from neighbors
                     if i > 0 and i < len(sequence) - 1:
                         sequence[i] = (sequence[i-1] + sequence[i+1]) / 2
                     elif i == 0 and len(sequence) > 1:
@@ -941,28 +648,44 @@ class PredictionGUI:
                     elif i == len(sequence) - 1 and len(sequence) > 1:
                         sequence[i] = sequence[i-1]
             
-            # Add temporal features and normalize
+            # Add temporal features (velocity and acceleration)
+            # This increases features from ~110 to ~330
             sequence = self.preprocessor._add_temporal_features(sequence)
-            sequence = self.preprocessor._normalize_features(sequence)
-            sequence = np.expand_dims(sequence, axis=0)
+            print(f"[DEBUG] After temporal features: {sequence.shape}")
             
-            # Predict
+            # Normalize features with robust scaling
+            sequence = self.preprocessor._normalize_features(sequence)
+            print(f"[DEBUG] After normalization: {sequence.shape}")
+            
+            # Add batch dimension: (1, 75, num_features)
+            sequence = np.expand_dims(sequence, axis=0)
+            print(f"[DEBUG] With batch dimension: {sequence.shape}")
+            
+            # Predict using the model wrapper (already handles batch extraction)
             predictions = self.model.predict(sequence)
+            print(f"[DEBUG] Predictions: {predictions}, type: {type(predictions)}")
+            
+            # Ensure it's a numpy array
             if not isinstance(predictions, np.ndarray):
                 predictions = np.array(predictions)
             
+            print(f"[DEBUG] Final predictions shape: {predictions.shape if hasattr(predictions, 'shape') else 'scalar'}")
+            
             # Get top predictions
             top_indices = np.argsort(predictions)[-3:][::-1]
+            
+            # Update current prediction (raw)
             top_idx = top_indices[0]
             self.prediction_confidence = float(predictions[top_idx])
             
-            # Store top 3
+            # Store top 3 predictions
             self.top_predictions = [
                 (self.idx_to_label[idx], float(predictions[idx]))
                 for idx in top_indices
             ]
             
-            # Format prediction
+            # === PREDICTION STABILIZATION ===
+            # Add to prediction history
             if self.prediction_confidence >= self.confidence_threshold_var.get():
                 label = self.idx_to_label[top_idx]
                 language, word = label.split('_', 1)
@@ -980,9 +703,9 @@ class PredictionGUI:
                 })
             
             # Analyze prediction history for stability
-            if len(self.prediction_history) >= 10:
+            if len(self.prediction_history) >= 3:
                 # Get most recent predictions
-                recent_predictions = list(self.prediction_history)[-10:]
+                recent_predictions = list(self.prediction_history)[-3:]
                 
                 # Count occurrences of each prediction
                 pred_counts = {}
@@ -1005,9 +728,11 @@ class PredictionGUI:
                 # 3. OR if it has very high confidence (>0.8) even once
                 should_update = False
                 
-                if frequency >= 8 and avg_confidence >= self.prediction_change_threshold:
+                if frequency >= 2 and avg_confidence >= self.prediction_change_threshold:
                     should_update = True
+                elif self.prediction_confidence >= 0.80:
                     should_update = True
+                    frequent_pred = current_pred
                 
                 if should_update and frequent_pred != "Low confidence":
                     # Check if it's actually different from current stable prediction
@@ -1082,27 +807,14 @@ class PredictionGUI:
                 text=f"Confidence: {self.stable_confidence*100:.1f}%"
             )
             
-            # Update detected language (for auto-detection mode)
-            if self.auto_detect_enabled and self.detected_language != "Unknown":
-                self.language_label.config(
-                    text=f"🌐 Detected: {self.detected_language.upper()}"
-                )
-            else:
-                self.language_label.config(text="")
-            
             # Update top predictions - ONLY show stable predictions
             if self.stable_top_predictions:
                 self.top_predictions_text.config(state=tk.NORMAL)
                 self.top_predictions_text.delete(1.0, tk.END)
                 
                 for i, (label, conf) in enumerate(self.stable_top_predictions, 1):
-                    # Handle both formats: "language_word" and "word"
-                    if '_' in label:
-                        language, word = label.split('_', 1)
-                        text = f"{i}. {word} ({language})\n   {conf*100:.1f}%\n"
-                    else:
-                        text = f"{i}. {label}\n   {conf*100:.1f}%\n"
-                    
+                    language, word = label.split('_', 1)
+                    text = f"{i}. {word} ({language})\n   {conf*100:.1f}%\n"
                     self.top_predictions_text.insert(tk.END, text)
                 
                 self.top_predictions_text.config(state=tk.DISABLED)

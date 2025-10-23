@@ -160,7 +160,7 @@ class TrainingGUIWithRecording:
     def __init__(self, root):
         self.root = root
         self.root.title("Multi-Lingual Lip Reading - Training with Recording")
-        self.root.geometry("1400x900")
+        self.root.geometry("1400x1000")  # Increased height for console visibility
         
         # Check GPU availability at startup
         self.gpu_available = self.check_gpu_availability()
@@ -217,15 +217,49 @@ class TrainingGUIWithRecording:
         self.initialize_system()
     
     def setup_ui(self):
-        """Setup the GUI layout"""
+        """Setup the GUI layout with scrollable canvas"""
         
-        # Main container
-        main_frame = ttk.Frame(self.root, padding="10")
+        # Create canvas and scrollbar for scrollable GUI
+        canvas = tk.Canvas(self.root, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=canvas.yview)
+        
+        # Create scrollable frame inside canvas
+        scrollable_frame = ttk.Frame(canvas)
+        
+        # Configure canvas to expand properly
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+        
+        canvas.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
+        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        
+        # Create window in canvas that expands to canvas width
+        canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        
+        # Update scroll region when frame changes
+        def _on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        
+        # Update canvas window width when canvas changes
+        def _on_canvas_configure(event):
+            canvas.itemconfig(canvas_window, width=event.width)
+        
+        scrollable_frame.bind("<Configure>", _on_frame_configure)
+        canvas.bind("<Configure>", _on_canvas_configure)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Enable mousewheel scrolling
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        # Main container (now inside scrollable frame)
+        main_frame = ttk.Frame(scrollable_frame, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # Configure grid weights
-        self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
+        # Configure grid weights for proper expansion
+        scrollable_frame.columnconfigure(0, weight=1)
+        scrollable_frame.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=2)
         main_frame.columnconfigure(1, weight=1)
         main_frame.rowconfigure(3, weight=1)
@@ -943,14 +977,23 @@ class TrainingGUIWithRecording:
         self.epoch_time_label.grid(row=0, column=4, padx=10)
     
     def setup_console_panel(self, parent):
-        """Setup console output panel"""
+        """Setup console output panel with scrollable output"""
         frame = ttk.LabelFrame(parent, text="Console Output", padding="10")
         frame.grid(row=3, column=0, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(0, weight=1)
         
-        self.console = scrolledtext.ScrolledText(frame, height=8, wrap=tk.WORD)
+        # ScrolledText with automatic scrollbar - height=12 for good visibility
+        self.console = scrolledtext.ScrolledText(frame, height=12, wrap=tk.WORD, 
+                                                   font=('Consolas', 9),
+                                                   bg='#f0f0f0', fg='#000000')
         self.console.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # Configure tags for colored output
+        self.console.tag_config('info', foreground='blue')
+        self.console.tag_config('warning', foreground='orange')
+        self.console.tag_config('error', foreground='red')
+        self.console.tag_config('success', foreground='green')
     
     def show_gpu_status_warning(self):
         """Show GPU status warning dialog if there are issues"""
@@ -1026,6 +1069,10 @@ class TrainingGUIWithRecording:
             total_videos = len(self.data_loader.video_paths)
             num_classes = len(self.data_loader.label_to_idx)
             class_names = list(self.data_loader.label_to_idx.keys())
+            
+            # Save class mapping immediately after scanning
+            self.data_loader.save_class_mapping('./models/class_mapping.json')
+            self.log(f"✓ Class mapping saved with {num_classes} classes")
             
             info_text = f"Found {total_videos} videos, {num_classes} classes ({', '.join(class_names[:5])}{'...' if len(class_names) > 5 else ''})"
             self.dataset_info_var.set(info_text)
@@ -1153,11 +1200,21 @@ class TrainingGUIWithRecording:
             self.log(f"  Failed: {failed_count}")
             self.log("="*60)
             
+            # Save class mapping after preprocessing
+            self.log("\nSaving class mapping...")
+            self.data_loader.save_class_mapping('./models/class_mapping.json')
+            num_classes = len(self.data_loader.label_to_idx)
+            self.log(f"✓ Class mapping saved with {num_classes} classes")
+            for label, idx in sorted(self.data_loader.label_to_idx.items(), key=lambda x: x[1]):
+                count = self.data_loader.class_counts.get(label, 0)
+                self.log(f"  Class {idx}: {label} ({count} samples)")
+            
             messagebox.showinfo(
                 "Preprocessing Complete",
                 f"Successfully preprocessed {preprocessed_count} videos!\n\n"
                 f"Failed: {failed_count}\n\n"
-                "Geometric features extracted and saved."
+                f"Classes: {num_classes}\n\n"
+                "Geometric features extracted and class mapping saved."
             )
             
         except Exception as e:
@@ -1226,6 +1283,15 @@ class TrainingGUIWithRecording:
             train_data, val_data = self.data_loader.split_dataset()
             
             self.log(f"Train: {len(train_data[0])}, Val: {len(val_data[0])}")
+            
+            # Save class mapping (regenerated every training)
+            self.log("Saving class mapping...")
+            self.data_loader.save_class_mapping('./models/class_mapping.json')
+            num_classes = len(self.data_loader.label_to_idx)
+            self.log(f"✓ Class mapping saved with {num_classes} classes")
+            for label, idx in sorted(self.data_loader.label_to_idx.items(), key=lambda x: x[1]):
+                count = self.data_loader.class_counts.get(label, 0)
+                self.log(f"  Class {idx}: {label} ({count} samples)")
             
             # Create data generators
             self.log("Creating data generators...")
@@ -1298,6 +1364,9 @@ class TrainingGUIWithRecording:
             self.log("="*60)
             self.log("TRAINING COMPLETED SUCCESSFULLY")
             self.log("="*60)
+            
+            # Auto-rename model based on trained languages
+            self._auto_rename_model_files()
             
             messagebox.showinfo("Success", "Training completed successfully!")
             
@@ -1433,6 +1502,81 @@ class TrainingGUIWithRecording:
         else:
             return f"{minutes:02d}:{secs:02d}"
     
+    def _auto_rename_model_files(self):
+        """Automatically rename model and class_mapping based on trained languages (no backup)"""
+        try:
+            import shutil
+            import os
+            
+            # Detect which languages were trained
+            video_dir = Path('./data/videos')
+            if not video_dir.exists():
+                return
+            
+            # Get list of languages in training data
+            languages = []
+            for item in video_dir.iterdir():
+                if item.is_dir():
+                    lang_name = item.name.lower()
+                    if lang_name in ['hindi', 'kannada', 'english', 'tamil', 'telugu']:
+                        # Check if this language has data
+                        if any(item.iterdir()):
+                            languages.append(lang_name)
+            
+            if not languages:
+                self.log("⚠ No language folders detected, keeping default names")
+                return
+            
+            # Sort for consistent naming
+            languages.sort()
+            
+            # Determine output filename
+            if len(languages) == 1:
+                # Single language model
+                lang_suffix = languages[0]
+                model_name = f"best_model_{lang_suffix}.h5"
+                mapping_name = f"class_mapping_{lang_suffix}.json"
+                self.log(f"\n🔄 Single language detected: {languages[0].upper()}")
+            else:
+                # Multi-language model
+                model_name = f"best_model_multi.h5"
+                mapping_name = f"class_mapping_multi.json"
+                self.log(f"\n🔄 Multiple languages detected: {', '.join([l.upper() for l in languages])}")
+            
+            # Rename model file (overwrite if exists)
+            old_model = Path('./models/best_model.h5')
+            new_model = Path(f'./models/{model_name}')
+            
+            if old_model.exists():
+                # Delete existing target file if it exists (no backup)
+                if new_model.exists():
+                    os.remove(str(new_model))
+                    self.log(f"   🗑️  Removed old: {model_name}")
+                
+                shutil.move(str(old_model), str(new_model))
+                self.log(f"   ✅ Model saved: {model_name}")
+            
+            # Rename class mapping file (overwrite if exists)
+            old_mapping = Path('./models/class_mapping.json')
+            new_mapping = Path(f'./models/{mapping_name}')
+            
+            if old_mapping.exists():
+                # Delete existing target file if it exists (no backup)
+                if new_mapping.exists():
+                    os.remove(str(new_mapping))
+                    self.log(f"   🗑️  Removed old: {mapping_name}")
+                
+                shutil.move(str(old_mapping), str(new_mapping))
+                self.log(f"   ✅ Mapping saved: {mapping_name}")
+            
+            self.log(f"\n💡 Ready to use: {model_name}")
+            if len(languages) == 1:
+                self.log(f"   For auto-detection, train other languages separately")
+            
+        except Exception as e:
+            self.log(f"\n⚠ Auto-rename failed: {e}")
+            self.log("   Files saved as: best_model.h5 and class_mapping.json")
+    
     def log(self, message):
         """Log message to console"""
         self.console.insert(tk.END, message + "\n")
@@ -1469,13 +1613,12 @@ class GUICallback(keras.callbacks.Callback):
             batch_loss = logs.get('loss', 0)
             batch_acc = logs.get('accuracy', 0)
             
-            # Update status in console (overwrite last line)
+            # Update status in terminal
             status_msg = f"  Batch {self.batch_count}: Loss={batch_loss:.4f}, Acc={batch_acc*100:.2f}%"
             
-            # For GUI update without creating too many log entries
+            # Print to terminal every 10 batches
             if self.batch_count % 10 == 0:
-                self.gui.console.insert(tk.END, status_msg + "\n")
-                self.gui.console.see(tk.END)
+                print(status_msg)
                 self.gui.root.update_idletasks()
     
     def on_epoch_end(self, epoch, logs=None):

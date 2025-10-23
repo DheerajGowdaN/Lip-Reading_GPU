@@ -1,0 +1,17 @@
+{
+  "label_to_idx": {
+    "hindi_\u0924\u0941\u092e\u094d\u0939\u093e\u0930\u093e": 0,
+    "hindi_\u092a\u093f\u0924\u093e": 1
+  },
+  "idx_to_label": {
+    "0": "hindi_\u0924\u0941\u092e\u094d\u0939\u093e\u0930\u093e",
+    "1": "hindi_\u092a\u093f\u0924\u093e"
+  },
+  "class_counts": {
+    "hindi_\u0924\u0941\u092e\u094d\u0939\u093e\u0930\u093e": 23,
+    "hindi_\u092a\u093f\u0924\u093e": 20
+  },
+  "languages": [
+    "hindi"
+  ]
+}
