@@ -87,7 +87,7 @@ class PredictionGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Multi-Lingual Lip Reading - Real-Time Prediction")
-        self.root.geometry("1000x700")
+        self.root.geometry("1280x720")
         
         # Initialize variables
         self.config = load_config()
@@ -146,24 +146,16 @@ class PredictionGUI:
     def setup_ui(self):
         """Setup the GUI layout"""
         
-        # Main container
-        main_frame = ttk.Frame(self.root, padding="10")
+        # Main container with reduced padding
+        main_frame = ttk.Frame(self.root, padding="5")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Configure grid weights
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
-        main_frame.columnconfigure(0, weight=2)
+        main_frame.columnconfigure(0, weight=3)  # Video gets more space
         main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(1, weight=1)
-        
-        # Title
-        title_label = ttk.Label(
-            main_frame,
-            text="Multi-Lingual Lip Reading - Real-Time Prediction",
-            font=("Arial", 16, "bold")
-        )
-        title_label.grid(row=0, column=0, columnspan=2, pady=10, sticky=tk.W)
+        main_frame.rowconfigure(0, weight=1)
         
         # Left panel - Video feed
         self.setup_video_panel(main_frame)
@@ -173,95 +165,107 @@ class PredictionGUI:
     
     def setup_video_panel(self, parent):
         """Setup video display panel"""
-        frame = ttk.LabelFrame(parent, text="Video Feed", padding="10")
-        frame.grid(row=1, column=0, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
+        frame = ttk.LabelFrame(parent, text="Video Feed", padding="5")
+        frame.grid(row=0, column=0, padx=3, pady=3, sticky=(tk.W, tk.E, tk.N, tk.S))
         frame.rowconfigure(0, weight=1)
         frame.columnconfigure(0, weight=1)
         
         # Video display
         self.video_label = ttk.Label(frame, text="Camera not started", 
                                      background="black", foreground="white",
-                                     font=("Arial", 14))
+                                     font=("Arial", 12))
         self.video_label.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # FPS and status
+        # FPS and status - more compact
         status_frame = ttk.Frame(frame)
-        status_frame.grid(row=1, column=0, pady=5, sticky=(tk.W, tk.E))
+        status_frame.grid(row=1, column=0, pady=3, sticky=(tk.W, tk.E))
         
-        self.fps_label = ttk.Label(status_frame, text="FPS: 0", font=("Arial", 10))
-        self.fps_label.pack(side=tk.LEFT, padx=10)
+        self.fps_label = ttk.Label(status_frame, text="FPS: 0", font=("Arial", 9))
+        self.fps_label.pack(side=tk.LEFT, padx=5)
         
         self.status_label = ttk.Label(status_frame, text="Status: Ready", 
-                                      font=("Arial", 10), foreground="blue")
-        self.status_label.pack(side=tk.LEFT, padx=10)
+                                      font=("Arial", 9), foreground="blue")
+        self.status_label.pack(side=tk.LEFT, padx=5)
     
     def setup_control_panel(self, parent):
         """Setup control and results panel"""
         frame = ttk.Frame(parent)
-        frame.grid(row=1, column=1, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
-        frame.rowconfigure(2, weight=1)
+        frame.grid(row=0, column=1, padx=3, pady=3, sticky=(tk.W, tk.E, tk.N, tk.S))
+        frame.rowconfigure(2, weight=1)  # Prediction results expands
         
-        # Model selection
-        model_frame = ttk.LabelFrame(frame, text="Model Configuration", padding="10")
-        model_frame.grid(row=0, column=0, pady=5, sticky=(tk.W, tk.E))
         
-        # Auto-detection checkbox
+        # Model selection - ultra compact
+        model_frame = ttk.LabelFrame(frame, text="Model", padding="2")
+        model_frame.grid(row=0, column=0, pady=1, sticky=(tk.W, tk.E))
+        
+        # Auto-detection checkbox - shorter text
         self.auto_detect_var = tk.BooleanVar(value=False)
-        auto_check = ttk.Checkbutton(model_frame, text="🌐 Enable Automatic Language Detection",
+        auto_check = ttk.Checkbutton(model_frame, text="🌐 Auto Detection",
                                      variable=self.auto_detect_var,
                                      command=self.toggle_auto_detection)
-        auto_check.grid(row=0, column=0, columnspan=3, pady=5, sticky=tk.W)
+        auto_check.grid(row=0, column=0, columnspan=3, pady=0, sticky=tk.W)
         
-        # Single model loading (default)
-        ttk.Label(model_frame, text="Model:").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+        # Model path - compact horizontal layout
+        path_frame = ttk.Frame(model_frame)
+        path_frame.grid(row=1, column=0, columnspan=3, pady=1, sticky=(tk.W, tk.E))
+        
         self.model_path_var = tk.StringVar(value="./models/best_model_hindi.h5")
-        model_entry = ttk.Entry(model_frame, textvariable=self.model_path_var, width=25)
-        model_entry.grid(row=1, column=1, padx=5, pady=5)
+        model_entry = ttk.Entry(path_frame, textvariable=self.model_path_var, width=20, font=("Arial", 8))
+        model_entry.pack(side=tk.LEFT, padx=1, fill=tk.X, expand=True)
         
-        browse_btn = ttk.Button(model_frame, text="Browse", command=self.browse_model)
-        browse_btn.grid(row=1, column=2, padx=5, pady=5)
+        browse_btn = ttk.Button(path_frame, text="Browse", command=self.browse_model, width=7)
+        browse_btn.pack(side=tk.LEFT, padx=1)
         
-        load_btn = ttk.Button(model_frame, text="Load Model", command=self.load_model)
-        load_btn.grid(row=2, column=0, columnspan=3, pady=10)
+        # Model status info - minimal
+        self.model_info_var = tk.StringVar(value="No model loaded")
+        info_label = ttk.Label(model_frame, textvariable=self.model_info_var, 
+                              foreground="blue", wraplength=320, font=("Arial", 7))
+        info_label.grid(row=2, column=0, columnspan=3, pady=0)
         
         # Load all models button (for auto-detection)
         self.load_all_btn = ttk.Button(model_frame, text="🔄 Load All Language Models", 
                                        command=self.load_all_models, state=tk.DISABLED)
-        self.load_all_btn.grid(row=3, column=0, columnspan=3, pady=5)
+        self.load_all_btn.grid(row=3, column=0, columnspan=3, pady=1)
         
-        self.model_info_var = tk.StringVar(value="No model loaded")
-        info_label = ttk.Label(model_frame, textvariable=self.model_info_var, 
-                              foreground="blue", wraplength=250)
-        info_label.grid(row=2, column=0, columnspan=3, pady=5)
+        # Camera controls - ultra compact
+        camera_frame = ttk.LabelFrame(frame, text="Camera", padding="2")
+        camera_frame.grid(row=1, column=0, pady=1, sticky=(tk.W, tk.E))
         
-        # Camera controls
-        camera_frame = ttk.LabelFrame(frame, text="Camera Controls", padding="10")
-        camera_frame.grid(row=1, column=0, pady=5, sticky=(tk.W, tk.E))
+        # Buttons in horizontal layout
+        btn_frame = ttk.Frame(camera_frame)
+        btn_frame.pack(pady=1, fill=tk.X)
         
-        self.start_camera_btn = ttk.Button(camera_frame, text="Start Camera", 
-                                          command=self.start_camera, width=20)
-        self.start_camera_btn.pack(pady=5)
+        self.start_camera_btn = ttk.Button(btn_frame, text="Start", 
+                                          command=self.start_camera, width=12)
+        self.start_camera_btn.pack(side=tk.LEFT, padx=1, expand=True, fill=tk.X)
         
-        self.stop_camera_btn = ttk.Button(camera_frame, text="Stop Camera", 
-                                         command=self.stop_camera, width=20,
+        self.stop_camera_btn = ttk.Button(btn_frame, text="Stop", 
+                                         command=self.stop_camera, width=12,
                                          state=tk.DISABLED)
-        self.stop_camera_btn.pack(pady=5)
+        self.stop_camera_btn.pack(side=tk.LEFT, padx=1, expand=True, fill=tk.X)
         
-        # Settings
-        ttk.Label(camera_frame, text="Camera ID:").pack(pady=5)
+        # Settings in compact layout
+        settings_frame = ttk.Frame(camera_frame)
+        settings_frame.pack(pady=1, fill=tk.X)
+        
+        ttk.Label(settings_frame, text="Camera ID:", font=("Arial", 8)).pack(side=tk.LEFT, padx=1)
         self.camera_id_var = tk.IntVar(value=0)
-        ttk.Spinbox(camera_frame, from_=0, to=5, textvariable=self.camera_id_var, 
-                   width=10).pack(pady=5)
+        ttk.Spinbox(settings_frame, from_=0, to=5, textvariable=self.camera_id_var, 
+                   width=5).pack(side=tk.LEFT, padx=1)
         
-        ttk.Label(camera_frame, text="Confidence Threshold:").pack(pady=5)
+        # Confidence threshold - more compact
+        thresh_frame = ttk.Frame(camera_frame)
+        thresh_frame.pack(pady=1, fill=tk.X)
+        
+        ttk.Label(thresh_frame, text="Confidence:", font=("Arial", 8)).pack(side=tk.LEFT, padx=1)
         self.confidence_threshold_var = tk.DoubleVar(value=0.5)
-        threshold_scale = ttk.Scale(camera_frame, from_=0.0, to=1.0, 
+        threshold_scale = ttk.Scale(thresh_frame, from_=0.0, to=1.0, 
                                    variable=self.confidence_threshold_var,
-                                   orient=tk.HORIZONTAL, length=200)
-        threshold_scale.pack(pady=5)
+                                   orient=tk.HORIZONTAL)
+        threshold_scale.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=1)
         
-        self.threshold_label = ttk.Label(camera_frame, text="0.50")
-        self.threshold_label.pack(pady=5)
+        self.threshold_label = ttk.Label(thresh_frame, text="0.50", font=("Arial", 8), width=4)
+        self.threshold_label.pack(side=tk.LEFT, padx=1)
         
         # Update threshold label
         def update_threshold_label(val):
@@ -269,47 +273,47 @@ class PredictionGUI:
         
         threshold_scale.config(command=update_threshold_label)
         
-        # Prediction results
-        results_frame = ttk.LabelFrame(frame, text="Prediction Results", padding="10")
-        results_frame.grid(row=2, column=0, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Prediction results - optimized to use available space
+        results_frame = ttk.LabelFrame(frame, text="Prediction", padding="2")
+        results_frame.grid(row=2, column=0, pady=1, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # Current prediction (large)
+        # Current prediction
         self.prediction_label = ttk.Label(results_frame, 
-                                         text="Waiting...",
-                                         font=("Arial", 20, "bold"),
+                                         text="No prediction",
+                                         font=("Arial", 14, "bold"),
                                          foreground="green",
-                                         wraplength=250)
-        self.prediction_label.pack(pady=10)
+                                         wraplength=320)
+        self.prediction_label.pack(pady=2)
         
         # Confidence
         self.confidence_label = ttk.Label(results_frame, 
-                                         text="Confidence: 0%",
-                                         font=("Arial", 12))
-        self.confidence_label.pack(pady=5)
+                                         text="Confidence: 0.0%",
+                                         font=("Arial", 9))
+        self.confidence_label.pack(pady=1)
         
         # Detected language (for auto-detection mode)
         self.language_label = ttk.Label(results_frame,
                                        text="",
-                                       font=("Arial", 10, "italic"),
+                                       font=("Arial", 8, "italic"),
                                        foreground="blue")
-        self.language_label.pack(pady=2)
+        self.language_label.pack(pady=0)
         
         # Top 3 predictions
         ttk.Label(results_frame, text="Top 3 Predictions:", 
-                 font=("Arial", 10, "bold")).pack(pady=10)
+                 font=("Arial", 8, "bold")).pack(pady=1)
         
-        self.top_predictions_text = tk.Text(results_frame, height=6, width=30,
-                                           font=("Arial", 9))
-        self.top_predictions_text.pack(pady=5)
+        self.top_predictions_text = tk.Text(results_frame, height=3, width=38,
+                                           font=("Arial", 8), wrap=tk.WORD)
+        self.top_predictions_text.pack(pady=1, fill=tk.BOTH, expand=True)
         self.top_predictions_text.config(state=tk.DISABLED)
         
-        # Recording controls
-        recording_frame = ttk.LabelFrame(frame, text="Recording", padding="10")
-        recording_frame.grid(row=3, column=0, pady=5, sticky=(tk.W, tk.E))
+        # Recording controls - minimal
+        recording_frame = ttk.LabelFrame(frame, text="Recording", padding="2")
+        recording_frame.grid(row=3, column=0, pady=1, sticky=(tk.W, tk.E))
         
         self.record_btn = ttk.Button(recording_frame, text="Record Video", 
-                                    command=self.toggle_recording, width=20)
-        self.record_btn.pack(pady=5)
+                                    command=self.toggle_recording)
+        self.record_btn.pack(pady=1, fill=tk.X)
         
         self.is_recording = False
         self.video_writer = None
@@ -375,8 +379,9 @@ class PredictionGUI:
                 # Extract language from filename (e.g., best_model_hindi.h5 -> hindi)
                 lang = model_file.stem.replace('best_model_', '')
                 
+                # Skip multi-language models for now, load at the end if no language-specific models
                 if lang == 'multi':
-                    continue  # Skip multi-language models for auto-detection
+                    continue
                 
                 try:
                     # Load class mapping
@@ -412,8 +417,54 @@ class PredictionGUI:
                 except Exception as e:
                     print(f"✗ Error loading {lang} model: {e}")
             
+            # If no language-specific models found, try loading multi-language model
             if not self.models:
-                messagebox.showerror("Error", "No models could be loaded!")
+                print("ℹ No language-specific models found. Attempting to load multi-language model...")
+                multi_model = models_dir / 'best_model_multi.h5'
+                multi_mapping = models_dir / 'class_mapping_multi.json'
+                
+                if multi_model.exists() and multi_mapping.exists():
+                    try:
+                        import json
+                        with open(multi_mapping, 'r', encoding='utf-8') as f:
+                            mapping = json.load(f)
+                        
+                        idx_to_label = {int(k): v for k, v in mapping['idx_to_label'].items()}
+                        num_classes = len(idx_to_label)
+                        
+                        # Initialize model
+                        model = LipReadingModel(
+                            num_classes=num_classes,
+                            sequence_length=self.config['model']['sequence_length'],
+                            frame_height=self.config['model']['frame_height'],
+                            frame_width=self.config['model']['frame_width']
+                        )
+                        
+                        model.load_model(str(multi_model))
+                        
+                        # Store as 'multi' language
+                        self.models['multi'] = model
+                        self.model_mappings['multi'] = idx_to_label
+                        
+                        # Detect languages from mapping
+                        languages = mapping.get('languages', ['multi'])
+                        lang_display = '+'.join([l.upper() for l in languages])
+                        loaded_languages.append(f"MULTI ({lang_display}, {num_classes} classes)")
+                        
+                        print(f"✓ Loaded MULTI-LANGUAGE model: {num_classes} classes")
+                    
+                    except Exception as e:
+                        print(f"✗ Error loading multi-language model: {e}")
+            
+            if not self.models:
+                messagebox.showerror("Error", 
+                                   "No models could be loaded!\n\n"
+                                   "Make sure you have:\n"
+                                   "• best_model_hindi.h5 + class_mapping_hindi.json\n"
+                                   "• best_model_kannada.h5 + class_mapping_kannada.json\n"
+                                   "OR\n"
+                                   "• best_model_multi.h5 + class_mapping_multi.json\n\n"
+                                   "Train models first using train_gui_with_recording.py")
                 return
             
             # Update GUI
@@ -1065,10 +1116,30 @@ class PredictionGUI:
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 img = Image.fromarray(frame_rgb)
                 
-                # Resize if needed
-                max_width = 640
-                max_height = 480
-                img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+                # Get the current size of the video label
+                label_width = self.video_label.winfo_width()
+                label_height = self.video_label.winfo_height()
+                
+                # Only resize if label has been drawn (width > 1)
+                if label_width > 1 and label_height > 1:
+                    # Calculate aspect ratios
+                    img_aspect = img.width / img.height
+                    label_aspect = label_width / label_height
+                    
+                    # Fit to fill the label while maintaining aspect ratio
+                    if img_aspect > label_aspect:
+                        # Image is wider - fit to height
+                        new_height = label_height
+                        new_width = int(new_height * img_aspect)
+                    else:
+                        # Image is taller - fit to width
+                        new_width = label_width
+                        new_height = int(new_width / img_aspect)
+                    
+                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                else:
+                    # Default size before label is drawn
+                    img = img.resize((640, 480), Image.Resampling.LANCZOS)
                 
                 photo = ImageTk.PhotoImage(image=img)
                 
