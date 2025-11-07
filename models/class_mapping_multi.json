@@ -1,17 +1,25 @@
 {
   "label_to_idx": {
-    "kannada_\u0c95\u0cc1\u0c9f\u0cc1\u0c82\u0cac": 0,
-    "kannada_\u0cac\u0cb8\u0cb5": 1
+    "english_bob": 0,
+    "english_family": 1,
+    "kannada_\u0c95\u0cc1\u0c9f\u0cc1\u0c82\u0cac": 2,
+    "kannada_\u0cac\u0cb8\u0cb5": 3
   },
   "idx_to_label": {
-    "0": "kannada_\u0c95\u0cc1\u0c9f\u0cc1\u0c82\u0cac",
-    "1": "kannada_\u0cac\u0cb8\u0cb5"
+    "0": "english_bob",
+    "1": "english_family",
+    "2": "kannada_\u0c95\u0cc1\u0c9f\u0cc1\u0c82\u0cac",
+    "3": "kannada_\u0cac\u0cb8\u0cb5"
   },
   "class_counts": {
+    "english_bob": 50,
+    "english_family": 50,
     "kannada_\u0c95\u0cc1\u0c9f\u0cc1\u0c82\u0cac": 50,
     "kannada_\u0cac\u0cb8\u0cb5": 50
   },
   "languages": [
+    "english",
+    "hindi",
     "kannada"
   ]
 }
