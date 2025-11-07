@@ -1519,8 +1519,14 @@ class TrainingGUIWithRecording:
                 if item.is_dir():
                     lang_name = item.name.lower()
                     if lang_name in ['hindi', 'kannada', 'english', 'tamil', 'telugu']:
-                        # Check if this language has data
-                        if any(item.iterdir()):
+                        # Check if this language has actual data (not just .gitkeep)
+                        has_data = False
+                        for subitem in item.iterdir():
+                            # Ignore .gitkeep files
+                            if subitem.name != '.gitkeep':
+                                has_data = True
+                                break
+                        if has_data:
                             languages.append(lang_name)
             
             if not languages:
@@ -1624,6 +1630,21 @@ class GUICallback(keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         """Called at the end of each epoch"""
         self.gui.update_metrics(epoch, logs)
+        
+        # Check for mode collapse (model stuck at ~50% accuracy)
+        if logs and epoch > 5:  # After 5 epochs
+            acc = logs.get('accuracy', 0)
+            val_acc = logs.get('val_accuracy', 0)
+            
+            # Warning if stuck at 50% (random guessing)
+            if 0.48 <= acc <= 0.52 and 0.48 <= val_acc <= 0.52:
+                self.gui.log(f"\n⚠️  WARNING: Model may be stuck (accuracy ~50%)")
+                self.gui.log(f"   This suggests the model isn't learning properly.")
+                
+            # Warning if accuracy too low after many epochs
+            if epoch > 15 and acc < 0.65:
+                self.gui.log(f"\n⚠️  WARNING: Low accuracy after {epoch+1} epochs ({acc*100:.1f}%)")
+                self.gui.log(f"   Consider stopping and retraining with different settings.")
     
     def on_train_end(self, logs=None):
         """Called at the end of training"""

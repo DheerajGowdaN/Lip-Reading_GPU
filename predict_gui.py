@@ -119,13 +119,13 @@ class PredictionGUI:
         self.stable_top_predictions = []  # Only updated when prediction stabilizes
         
         # Prediction stabilization
-        self.prediction_history = deque(maxlen=15)  # Last 15 predictions for maximum stability
+        self.prediction_history = deque(maxlen=10)  # Last 10 predictions for stability
         self.stable_prediction = "No prediction"
         self.stable_prediction_display = "No prediction"
         self.stable_confidence = 0.0
-        self.prediction_change_threshold = 0.80  # Very high threshold (80%) to change prediction
+        self.prediction_change_threshold = 0.65  # 65% confidence threshold to change prediction
         self.stability_count = 0  # Consecutive same predictions
-        self.stability_required = 10  # Need 10 consecutive confirmations (~2-3 seconds) predictions to change
+        self.stability_required = 5  # Need 5 consecutive confirmations (~1 second) to change
         
         # Lip tracking improvements
         self.previous_lip_landmarks = None

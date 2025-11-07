@@ -371,6 +371,11 @@ class LipReadingModel:
                 print(f"Validation steps: {validation_steps} (calculated as ⌈{num_val_samples}/{batch_size}⌉)")
         print(f"{'='*60}\n")
         
+        # Calculate class weights to prevent mode collapse
+        # Give equal weight to each class
+        class_weight = {i: 1.0 for i in range(self.num_classes)}
+        print(f"Using balanced class weights: {class_weight}\n")
+        
         # Check if train_data is a generator or tuple
         if hasattr(train_data, '__iter__') and not isinstance(train_data, tuple):
             # It's a generator - pass steps_per_epoch
@@ -381,6 +386,7 @@ class LipReadingModel:
                 validation_steps=validation_steps,
                 epochs=epochs,
                 callbacks=callbacks,
+                class_weight=class_weight,
                 verbose=1
             )
         else:
@@ -392,6 +398,7 @@ class LipReadingModel:
                 epochs=epochs,
                 batch_size=batch_size,
                 callbacks=callbacks,
+                class_weight=class_weight,
                 verbose=1
             )
         

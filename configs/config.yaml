@@ -12,7 +12,7 @@ model:
 training:
   batch_size: 8                 # Batch size (adjust based on GPU memory)
   epochs: 100                   # Maximum epochs
-  learning_rate: 0.001          # Initial learning rate
+  learning_rate: 0.0005         # Initial learning rate (lowered to prevent mode collapse)
   early_stopping_patience: 15   # Patience for early stopping
   reduce_lr_patience: 5         # Patience for reducing learning rate
   reduce_lr_factor: 0.5         # Factor to reduce learning rate
